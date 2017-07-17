@@ -1,0 +1,185 @@
+process_partner:
+    model: res.partner
+    sequence: 1
+    search:
+        - ('name', '=', 'new partner')
+    values:
+        {'name': 'new partner'}
+    result:
+        id: int
+        name: str
+process_equipment_category:
+    model: maintenance.equipment.category
+    sequence: 2
+    search:
+        - ('name', '=', 'Server (NOT DELETE)')
+    result:
+        id: int
+process_equipment:
+    model: maintenance.equipment
+    sequence: 3
+    search:
+        - ('name', '=', 'server test')
+    depends:
+        - process_partner
+        - process_equipment_category
+    values: {'name': 'Server test gure 2', 'name': 'server test',
+             'owner_id': '{{ process_partner.id }}', 'category_id': '{{ process_equipment_category.id }}'}
+    result:
+        id: int
+process_instance_version:
+    model: orchest.instance.version
+    sequence: 4
+    search:
+        - ('version_key', '=', '10.0')
+    values: {'version_key': '10.0', 'version_value': '100'}
+    result:
+        id: id
+process_repo_app:
+    model: instance.repos.list.folder
+    sequence: 5
+    search:
+        - ('name', '=', 'asdcust')
+    values: {'name': 'asdcust'}
+    result:
+        id: int
+process_repos_list:
+    model: instance.repos.list
+    sequence: 6
+    depends:
+        - process_repo_app
+    search:
+        - ('name', '=', 'asdcust')
+    values: {'name': 'asdcust', 'repo_url': 'git@github.com:Vauxoo/asdcust.git',
+             'repo_type': 'general', 'contents': "['{{ process_repo_app.id }}']"}
+    result:
+        id: int
+process_instance:
+    model: orchest.instance
+    sequence: 7
+    write: true
+    depends:
+        - process_repo_app
+        - process_partner
+        - process_instance_version
+        - process_repos_list
+    search:
+        - ('instance_id', '=', 'asdcust100')
+    values: {'app_name': '{{ process_repo_app.id }}', 'repo_url': '{{ process_repos_list.id }}',
+             'partner_id': '{{ process_partner.id }}', 'version': '{{ process_instance_version.id }}',
+             'instance_id': 'asdcust100', 'repos_modules': "['{{ process_repo_app.id }}']"}
+    result:
+        id: int
+process_instance_server:
+    model: database.configs.instance.server
+    sequence: 8
+    depends:
+        - process_equipment
+        - process_instance
+    search:
+        - ('orchest_instance', '=', '{{ process_instance.id }}')
+    values: {'orchest_instance': '{{ process_instance.id }}', 'material_id': '{{ process_equipment.id }}'}
+    result:
+        id: int
+process_instances_configurations:
+    model: instances.configurations
+    sequence: 9
+    depends:
+        - process_equipment
+        - process_instance_server
+        - process_instance_version
+    search:
+        - ('customer', '=', '{{ process_instance_server.id }}')
+    values: {'customer': '{{ process_instance_server.id }}', 'server': '{{ process_equipment.id }}'}
+    result:
+        id: int
+process_database_configs:
+    model: database.configs
+    sequence: 10
+    depends:
+        - process_instance_server
+        - process_instances_configurations
+    search:
+        - ('config_id', '=', '{{ process_instance_server.id }}')
+    values: {'db_user': 'odoo', 'db_password': 'odoo', 'instance_type': 'test',
+             'config_id': '{{ process_instance_server.id }}', 'config_set': '{{ process_instances_configurations.id }}'}
+    result:
+        id: id
+process_user_1:
+    model: res.users
+    sequence: 11
+    write: true
+    search:
+        - ('login', '=', 'mapuerta')
+    values: {'login': 'mapuerta', 'password': 'mapuerta', 'name': 'Mauricio Puerta'}
+    result:
+        id: id
+process_user_2:
+    model: res.users
+    sequence: 12
+    write: true
+    search:
+        - ('login', '=', 'angelfentanez')
+    values: {'login': 'angelfentanez', 'password': 'angelfentanez', 'name': 'Angel Fentanez'}
+    result:
+        id: id
+process_user_3:
+    model: res.users
+    sequence: 13
+    write: true
+    search:
+        - ('login', '=', 'ruiztulio')
+    values: {'login': 'ruiztulio', 'password': 'ruiztulio', 'name': 'Tulio Ruiz'}
+    result:
+        id: id
+process_user_user:
+    model: res.users
+    sequence: 14
+    write: true
+    search:
+        - ('login', '=', 'user')
+    values: {'login': 'user', 'password': '123456', 'name': 'User user'}
+    result:
+        id: id
+process_user_develop:
+    model: res.users
+    sequence: 15
+    write: true
+    search:
+        - ('login', '=', 'user_develop')
+    values: {'login': 'user_develop', 'password': '123456', 'name': 'User develop'}
+    result:
+        id: id
+process_user_manager:
+    model: res.users
+    sequence: 16
+    write: true
+    search:
+        - ('login', '=', 'user_manager')
+    values: {'login': 'user_manager', 'password': '123456', 'name': 'User manager'}
+    result:
+        id: id
+process_group_manager:
+    depends:
+        - process_user_1
+        - process_user_2
+        - process_user_3
+        - process_user_manager
+        - process_user_develop
+        - process_user_user
+    sequence: 17
+    add_data_xml_id: true
+    values: 
+        - ['odoo_orchest.orchest_administrator', {'users': ['{{ process_user_1.id }}','{{ process_user_2.id }}','{{ process_user_3.id }}']}]
+        - ['odoo_orchest.orchest_developer_manager', {'users': ['{{ process_user_manager.id }}']}]
+        - ['odoo_orchest.orchest_developer', {'users': ['{{ process_user_develop.id }}']}]
+        - ['odoo_orchest.orchest_user', {'users': ['{{ process_user_user.id }}']}]
+        - ['odoo_orchest.group_contacts', {'users': ['{{ process_user_1.id }}','{{ process_user_2.id }}','{{ process_user_3.id }}']}]
+process_rabbit:
+    sequence: 18
+    add_data_xml_id: true
+    values: 
+        - ['odoo_orchest.default_record', {'user': 'demo', 'task_queue': 'demo_queue_tasks',
+                                           'exchange': 'demo_topic_tasks', 'task_topic': 'demo.server.task',
+                                           'stat_queue': 'demo_queue_stat', 'stat_topic': 'demo.server.stat',
+                                           'confirm': '123456', 'password': '123456', 'virtual_host': 'demo'}]
